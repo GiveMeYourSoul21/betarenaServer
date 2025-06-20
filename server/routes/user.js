@@ -284,7 +284,7 @@ router.post('/bonus', auth, async (req, res) => {
     }
     
     // Додаємо бонус
-    const bonusAmount = 100;
+    const bonusAmount = 1000;
     user.chips += bonusAmount;
     user.lastBonus = now;
     
