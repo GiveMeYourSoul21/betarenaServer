@@ -257,36 +257,7 @@ router.post('/create', async (req, res) => {
   }
 });
 
-async function ensureMinimumChips(game) {
-  try {
-    // Убеждаемся что у всех есть минимальные фишки
-    let gameChanged = false;
-    
-    game.players.forEach(player => {
-      if (player.chips < 10) {
-        player.chips = 1000;
-        gameChanged = true;
-        console.log(`Пополнили фишки игрока ${player.username} до 1000`);
-      }
-    });
-    
-    if (gameChanged) {
-      // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Явно помечаем JSON поля как измененные для Sequelize
-
-      game.changed('players', true);
-
-      game.changed('pot', true);
-
-      game.changed('settings', true);
-
-      
-
-      await game.save();
-    }
-  } catch (error) {
-    console.error('Ошибка при пополнении фишек:', error);
-  }
-}
+// ВИДАЛЕНО: функція ensureMinimumChips для запобігання автоматичному поповненню фішок
 
 /**
  * @route   GET /api/poker/:gameId
@@ -315,8 +286,7 @@ router.get('/:gameId', async (req, res) => {
       }
     }
     
-    // Убедимся что у всех есть минимальные фишки
-    await ensureMinimumChips(game);
+    // ВИДАЛЕНО: виклик ensureMinimumChips для запобігання автоматичному поповненню фішок
     
     // ДОБАВЛЕНО: проверяем если игра была заменена новой
     if (game.status === 'replaced' && game.nextGameId) {
@@ -402,6 +372,12 @@ router.get('/:gameId', async (req, res) => {
     gameData.currentTurn = game.settings.currentTurn;
     gameData.currentRound = game.settings.currentRound;
     gameData.dealerPosition = game.settings.dealerPosition;
+    
+    // ДОБАВЛЕНО: логування передачі даних про lastAction
+    console.log(`[GET] 📤 Відправляємо дані гри ${gameId}:`);
+    game.players.forEach((player, idx) => {
+      console.log(`[GET] Гравець ${idx} (${player.username}): lastAction=`, player.lastAction);
+    });
     
     res.status(200).json(gameData);
   } catch (error) {
@@ -1248,7 +1224,8 @@ async function processBotAction(gameId) {
       case 'fold':
         botPlayer.folded = true;
         botPlayer.hasActed = true;
-        console.log(`[BOT-ACTION] Применил fold: folded=${botPlayer.folded}, hasActed=${botPlayer.hasActed}`);
+        botPlayer.lastAction = { action: 'fold', timestamp: Date.now() };
+        console.log(`[BOT-ACTION] ✅ Применил fold: folded=${botPlayer.folded}, hasActed=${botPlayer.hasActed}, lastAction установлен:`, botPlayer.lastAction);
         break;
       
       case 'call':
@@ -1258,7 +1235,8 @@ async function processBotAction(gameId) {
           botPlayer.currentBet += callAmount;
           game.pot += callAmount;
           botPlayer.hasActed = true;
-          console.log(`[BOT-ACTION] Применил call: chips=${botPlayer.chips}, bet=${botPlayer.currentBet}, hasActed=${botPlayer.hasActed}`);
+          botPlayer.lastAction = { action: 'call', amount: callAmount, timestamp: Date.now() };
+          console.log(`[BOT-ACTION] ✅ Применил call: chips=${botPlayer.chips}, bet=${botPlayer.currentBet}, hasActed=${botPlayer.hasActed}, lastAction установлен:`, botPlayer.lastAction);
         }
         break;
       
@@ -1272,20 +1250,25 @@ async function processBotAction(gameId) {
           botPlayer.currentBet = betAmount;
           botPlayer.hasActed = true;
           
+          // Визначаємо тип дії для ботів
+          const actionType = currentBet > 0 ? 'raise' : 'bet';
+          botPlayer.lastAction = { action: actionType, amount: betAmount, timestamp: Date.now() };
+          
           // ИСПРАВЛЕНО: сбрасываем hasActed только у НЕ сфолженных игроков при рейзе
           game.players.forEach((p, idx) => {
             if (idx !== currentPlayerIndex && !p.folded) {
             p.hasActed = false;
           }
         });
-          console.log(`[BOT-ACTION] Применил bet/raise: chips=${botPlayer.chips}, bet=${botPlayer.currentBet}, hasActed=${botPlayer.hasActed}`);
+          console.log(`[BOT-ACTION] ✅ Применил ${actionType}: chips=${botPlayer.chips}, bet=${botPlayer.currentBet}, hasActed=${botPlayer.hasActed}, lastAction установлен:`, botPlayer.lastAction);
         }
         break;
         
       case 'check':
         if (botPlayer.currentBet === currentBet) {
           botPlayer.hasActed = true;
-          console.log(`[BOT-ACTION] Применил check: hasActed=${botPlayer.hasActed}`);
+          botPlayer.lastAction = { action: 'check', timestamp: Date.now() };
+          console.log(`[BOT-ACTION] ✅ Применил check: hasActed=${botPlayer.hasActed}, lastAction установлен:`, botPlayer.lastAction);
         }
         break;
     }
@@ -1730,8 +1713,9 @@ router.post('/:gameId/fold', async (req, res) => {
     // Обновляем данные игрока
     player.folded = true;
     player.hasActed = true;
+    player.lastAction = { action: 'fold', timestamp: Date.now() };
     
-    console.log(`[FOLD] Игрок ${player.username} сбросил карты`);
+    console.log(`[FOLD] ✅ Игрок ${player.username} сбросил карты, lastAction установлен:`, player.lastAction);
     
     // Проверяем, остался ли только один активный игрок
     const activePlayers = game.players.filter(p => !p.folded);
@@ -1863,16 +1847,18 @@ router.post('/:gameId/call', async (req, res) => {
       player.chips = 0;
       player.isAllIn = true;
       player.hasActed = true;
+      player.lastAction = { action: 'all-in', amount: allInAmount, timestamp: Date.now() };
       
-      console.log(`[CALL] 🔥 All-in на ${allInAmount} фишек`);
+      console.log(`[CALL] 🔥 All-in на ${allInAmount} фишек, lastAction установлен:`, player.lastAction);
     } else {
       // Обычный колл
       player.chips -= callAmount;
       player.currentBet += callAmount;
       game.pot += callAmount;
       player.hasActed = true;
+      player.lastAction = { action: 'call', amount: callAmount, timestamp: Date.now() };
       
-      console.log(`[CALL] ✅ Колл на ${callAmount} фишек`);
+      console.log(`[CALL] ✅ Колл на ${callAmount} фишек, lastAction установлен:`, player.lastAction);
     }
     
     console.log(`[CALL] Результат: chips=${player.chips}, bet=${player.currentBet}, pot=${game.pot}`);
@@ -1986,6 +1972,10 @@ router.post('/:gameId/raise', async (req, res) => {
     game.pot += raiseAmount;
     player.hasActed = true;
     
+    // Визначаємо тип дії (bet або raise)
+    const actionType = currentBet > 0 ? 'raise' : 'bet';
+    player.lastAction = { action: actionType, amount: amount, timestamp: Date.now() };
+    
     // Сбрасываем hasActed для всех остальных активных игроков
     game.players.forEach((p, idx) => {
       if (idx !== playerIndex && !p.folded) {
@@ -1993,7 +1983,7 @@ router.post('/:gameId/raise', async (req, res) => {
       }
     });
     
-    console.log(`[RAISE] ✅ Рейз до ${amount}. Результат: chips=${player.chips}, pot=${game.pot}`);
+    console.log(`[RAISE] ✅ ${actionType} до ${amount}. Результат: chips=${player.chips}, pot=${game.pot}, lastAction установлен:`, player.lastAction);
     
     // Переходим к следующему игроку
     do {
@@ -2078,8 +2068,9 @@ router.post('/:gameId/check', async (req, res) => {
     
     // Применяем чек
     player.hasActed = true;
+    player.lastAction = { action: 'check', timestamp: Date.now() };
     
-    console.log(`[CHECK] ✅ Чек игрока ${player.username}`);
+    console.log(`[CHECK] ✅ Чек игрока ${player.username}, lastAction установлен:`, player.lastAction);
     
     // Проверяем, все ли игроки сделали ход
     const activePlayers = game.players.filter(p => !p.folded);
