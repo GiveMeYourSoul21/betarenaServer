@@ -99,7 +99,7 @@ router.post('/create', async (req, res) => {
       {
         user: userId,
         username: username,
-      chips: 1000,
+      chips: 5000,
       cards: [],
         position: 0,
       currentBet: 0,
@@ -115,7 +115,7 @@ router.post('/create', async (req, res) => {
     for (let i = 1; i <= 3; i++) {
       players.push({
         username: `Bot ${i}`,
-        chips: 1000,
+        chips: 5000,
         cards: [],
         position: i,
         isBot: true,
@@ -750,12 +750,12 @@ router.post('/:gameId/action', async (req, res) => {
       console.log(`[ACTION] ID текущей игры: ${game.id}`);
       console.log(`[ACTION] currentTurn для следующего бота: ${game.settings.currentTurn}`);
       
-      // Випадкова затримка для реалістичності
-      const randomDelay = Math.random() * 4000 + 4000; // 4-8 секунд
+      // Випадкова затримка для реалістичності (зменшено в 2 рази)
+      const randomDelay = Math.random() * 2000 + 2000; // 2-4 секунди
       console.log(`[ACTION] 🎲 Випадкова затримка для наступного бота: ${Math.round(randomDelay)}ms`);
       setTimeout(() => {
         processBotAction(gameId);
-      }, randomDelay); // ИЗМЕНЕНО: випадкова затримка 4-8 секунд для більшої реалістичності
+      }, randomDelay); // ИЗМЕНЕНО: випадкова затримка 2-4 секунди (зменшено в 2 рази)
     } else {
       console.log('[ACTION] Цепочка ботов остановлена');
       if (game.status !== 'playing') {
@@ -1174,9 +1174,9 @@ async function processBotAction(gameId) {
   try {
     console.log(`[BOT-ACTION] ================ ЗАПУСК БОТА для ${gameId} ================`);
     
-    // ДОБАВЛЕНО: базовая затримка для реалистичности
-    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 секунды базовой затримки
-    console.log(`[BOT-ACTION] ⏰ Базовая затримка 3 секунды завершена`);
+    // ДОБАВЛЕНО: базовая затримка для реалистичности (зменшено в 2 рази)
+    await new Promise(resolve => setTimeout(resolve, 1500)); // 1.5 секунди базовой затримки
+    console.log(`[BOT-ACTION] ⏰ Базовая затримка 1.5 секунди завершена`);
     
     if (processingGames.has(gameId.toString())) {
       console.log(`[BOT-ACTION] Игра ${gameId} уже обрабатывается, пропускаем`);
@@ -1424,13 +1424,13 @@ async function processBotAction(gameId) {
 
     // ИСПРАВЛЕНО: запускаем следующего бота если он есть
     if (freshGame.players[nextPlayerIndex].isBot && !freshGame.players[nextPlayerIndex].folded && !freshGame.players[nextPlayerIndex].hasActed) {
-      // Випадкова затримка для реалістичності
-      const randomDelay = Math.random() * 4000 + 4000; // 4-8 секунд
+      // Випадкова затримка для реалістичності (зменшено в 2 рази)
+      const randomDelay = Math.random() * 2000 + 2000; // 2-4 секунди
       console.log(`[BOT-ACTION] 🤖 Следующий игрок тоже бот, запускаем его через ${Math.round(randomDelay)}ms`);
       setTimeout(async () => {
         processingGames.delete(gameId.toString());
         await processBotAction(gameId);
-      }, randomDelay); // ИЗМЕНЕНО: випадкова затримка 4-8 секунд
+      }, randomDelay); // ИЗМЕНЕНО: випадкова затримка 2-4 секунди (зменшено в 2 рази)
     } else {
       console.log(`[BOT-ACTION] ⏹️ Следующий игрок не бот или уже действовал, остановка обработки`);
       processingGames.delete(gameId.toString());

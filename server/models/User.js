@@ -38,7 +38,7 @@ module.exports = (sequelize) => {
   },
   chips: {
       type: DataTypes.INTEGER,
-      defaultValue: 1000,
+      defaultValue: 5000,
       validate: {
         min: 0
       }

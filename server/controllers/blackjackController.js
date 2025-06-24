@@ -61,7 +61,7 @@ exports.createGame = async (req, res) => {
 
     // ИСПРАВЛЕНО: Пытаемся получить данные пользователя из базы данных, но не требуем его обязательно
     let user = null;
-    let userChips = 1000;
+    let userChips = 5000;
     let finalUsername = 'Игрок';
     
     try {
@@ -69,7 +69,7 @@ exports.createGame = async (req, res) => {
         // Если userId - число, ищем в базе
         user = await User.findByPk(userId);
         if (user) {
-          userChips = user.chips || 1000;
+          userChips = user.chips || 5000;
           finalUsername = user.username || 'Игрок';
           console.log('[BLACKJACK] Получен пользователь из базы:', finalUsername, 'фишки:', userChips);
         } else {

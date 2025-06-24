@@ -38,7 +38,7 @@ exports.createGame = async (req, res) => {
       {
         user: userId || null,
         username: username || 'Игрок',
-        chips: 1000,
+        chips: 5000,
         cards: [],
         position: 0,
         currentBet: 0,
@@ -57,7 +57,7 @@ exports.createGame = async (req, res) => {
     for (let i = 1; i <= 3; i++) {
       players.push({
         username: `Bot ${i}`,
-        chips: 1000,
+        chips: 5000,
         cards: [],
         position: i,
         isBot: true,
@@ -251,7 +251,7 @@ exports.joinGame = async (req, res) => {
     game.players.push({
       user: userId,
       username: username,
-      chips: 1000,
+      chips: 5000,
       cards: [],
       position: game.players.length,
       currentBet: 0,
